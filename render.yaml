@@ -1,0 +1,17 @@
+services:
+  - type: worker
+    name: mysterious-gloqbot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: OWNER_ID
+        sync: false
+      - key: BOT_NAME
+        value: MYSTERIOUS GLOQBOT
+      - key: BOT_VERSION
+        value: 1.0.0
+      - key: LOG_LEVEL
+        value: INFO

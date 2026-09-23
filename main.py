@@ -1,79 +1,84 @@
 import logging
+import os
 
-from telegram.ext import (
-    Application,
-    CallbackQueryHandler,
-    CommandHandler,
-)
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler
 
-from config import BOT_TOKEN
-
-from bot.handlers.start import start_command
-from bot.handlers.user import help_command, about_command, status_command
+from config import BOT_TOKEN, LOG_LEVEL
 from bot.handlers.admin import admin_command
 from bot.handlers.features import (
-    ai_command,
     agent_command,
+    ai_command,
+    business_command,
+    community_command,
     creative_command,
     research_command,
-    community_command,
-    business_command,
     settings_command,
 )
+from bot.handlers.start import start_command
+from bot.handlers.user import about_command, help_command, status_command
 
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
+    level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
 )
-
 logger = logging.getLogger(__name__)
+
+
+CALLBACK_TEXT = {
+    "ai_tools": "🧠 <b>AI Tools</b>\n\nAI workflows, content ideas, research prompts, and smart task planning.",
+    "agents": "🤖 <b>Agents</b>\n\nPlanner, executor, scheduler, and reusable tool registry components.",
+    "creative": "🎨 <b>Creative</b>\n\nCreative prompts, captions, scripts, and multimedia concepts.",
+    "research": "🔬 <b>Research</b>\n\nResearch questions, structured plans, analysis, and summaries.",
+    "community": "👥 <b>Community</b>\n\nWelcome messages, announcements, rules, and moderation support.",
+    "business": "💼 <b>Business</b>\n\nCustomer records, tasks, reports, and operational workflows.",
+    "settings": "⚙️ <b>Settings</b>\n\nOwner configuration, moderation controls, and automation preferences.",
+    "about": "👑 <b>MYSTERIOUS GLOQBOT</b>\n\nA Telegram power bot built for AI, automation, communities, and business workflows.",
+}
 
 
 async def handle_callback(update, context):
     query = update.callback_query
+    if query is None:
+        return
     await query.answer()
-
-    callback_data = query.data or "about"
-    text_map = {
-        "ai_tools": "🧠 <b>AI Tools</b>\n\nThe bot can guide you through AI workflows, content ideas, research prompts, and smart task planning.",
-        "agents": "🤖 <b>Agents</b>\n\nThe system is organized around a multi-agent design with planning, execution, tools, and scheduling building blocks.",
-        "creative": "🎨 <b>Creative</b>\n\nGenerate campaign ideas, prompts, captions, scripts, and audio/video concepts in a single workspace.",
-        "research": "🔬 <b>Research</b>\n\nUse research lab flows to define questions, plan steps, and summarize sources and findings.",
-        "community": "👥 <b>Community</b>\n\nThis module helps with onboarding, rules, announcements, and community management features.",
-        "business": "💼 <b>Business</b>\n\nCreate customer records, tasks, and reporting workflows using the business toolkit.",
-        "settings": "⚙️ <b>Settings</b>\n\nBot settings can be expanded with owner-level configuration, moderation controls, and automation preferences.",
-        "about": "👑 <b>MYSTERIOUS GLOQBOT</b>\n\nA Telegram power bot in 2026, built for AI, automation, community management, and operational workflows.",
-    }
-
     await query.edit_message_text(
-        text_map.get(callback_data, text_map["about"]),
+        CALLBACK_TEXT.get(query.data, CALLBACK_TEXT["about"]),
         parse_mode="HTML",
     )
 
 
-def main():
-    if not BOT_TOKEN:
-        raise ValueError("BOT_TOKEN is missing. Add it to your .env file.")
+def build_application() -> Application:
+    """Build the application separately so imports/configuration can be tested."""
+    if not BOT_TOKEN or BOT_TOKEN.startswith("YOUR_"):
+        raise RuntimeError(
+            "BOT_TOKEN is missing or still a placeholder. Set BOT_TOKEN in Render environment variables."
+        )
 
     app = Application.builder().token(BOT_TOKEN).build()
-
-    app.add_handler(CommandHandler("start", start_command))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CommandHandler("about", about_command))
-    app.add_handler(CommandHandler("status", status_command))
-    app.add_handler(CommandHandler("admin", admin_command))
-    app.add_handler(CommandHandler("ai", ai_command))
-    app.add_handler(CommandHandler("agents", agent_command))
-    app.add_handler(CommandHandler("creative", creative_command))
-    app.add_handler(CommandHandler("research", research_command))
-    app.add_handler(CommandHandler("community", community_command))
-    app.add_handler(CommandHandler("business", business_command))
-    app.add_handler(CommandHandler("settings", settings_command))
+    commands = {
+        "start": start_command,
+        "help": help_command,
+        "about": about_command,
+        "status": status_command,
+        "admin": admin_command,
+        "ai": ai_command,
+        "agents": agent_command,
+        "creative": creative_command,
+        "research": research_command,
+        "community": community_command,
+        "business": business_command,
+        "settings": settings_command,
+    }
+    for name, callback in commands.items():
+        app.add_handler(CommandHandler(name, callback))
     app.add_handler(CallbackQueryHandler(handle_callback))
+    return app
 
-    logger.info("👑 MYSTERIOUS GLOQBOT is starting...")
-    app.run_polling()
+
+def main():
+    logger.info("👑 MYSTERIOUS GLOQBOT is starting on Render...")
+    build_application().run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":
