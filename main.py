@@ -11,6 +11,15 @@ from config import BOT_TOKEN
 from bot.handlers.start import start_command
 from bot.handlers.user import help_command, about_command, status_command
 from bot.handlers.admin import admin_command
+from bot.handlers.features import (
+    ai_command,
+    agent_command,
+    creative_command,
+    research_command,
+    community_command,
+    business_command,
+    settings_command,
+)
 
 
 logging.basicConfig(
@@ -37,7 +46,10 @@ async def handle_callback(update, context):
         "about": "👑 <b>MYSTERIOUS GLOQBOT</b>\n\nA Telegram power bot in 2026, built for AI, automation, community management, and operational workflows.",
     }
 
-    await query.edit_message_text(text_map.get(callback_data, text_map["about"]), parse_mode="HTML")
+    await query.edit_message_text(
+        text_map.get(callback_data, text_map["about"]),
+        parse_mode="HTML",
+    )
 
 
 def main():
@@ -51,6 +63,13 @@ def main():
     app.add_handler(CommandHandler("about", about_command))
     app.add_handler(CommandHandler("status", status_command))
     app.add_handler(CommandHandler("admin", admin_command))
+    app.add_handler(CommandHandler("ai", ai_command))
+    app.add_handler(CommandHandler("agents", agent_command))
+    app.add_handler(CommandHandler("creative", creative_command))
+    app.add_handler(CommandHandler("research", research_command))
+    app.add_handler(CommandHandler("community", community_command))
+    app.add_handler(CommandHandler("business", business_command))
+    app.add_handler(CommandHandler("settings", settings_command))
     app.add_handler(CallbackQueryHandler(handle_callback))
 
     logger.info("👑 MYSTERIOUS GLOQBOT is starting...")
