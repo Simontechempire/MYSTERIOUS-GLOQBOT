@@ -1,61 +1,77 @@
-import asyncio
 import logging
-import sys
 
-from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
-from aiogram.fsm.storage.memory import MemoryStorage
+from telegram import Update
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+)
 
-from config import settings
-from bot.handlers import setup_routers
-from bot.middlewares.force_join import ForceJoinMiddleware
-
-# Optional: better event loop on Linux
-try:
-    import uvloop
-    uvloop.install()
-except ImportError:
-    pass
+from config import BOT_TOKEN
 
 
-async def main() -> None:
-    logging.basicConfig(
-        level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-        stream=sys.stdout,
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
+)
+
+logger = logging.getLogger(__name__)
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+
+    await update.message.reply_text(
+        f"👑 Welcome to MYSTERIOUS GLOQBOT, {user.first_name}!\n\n"
+        "🤖 Your multi-agent AI operating system is online.\n\n"
+        "Use /help to explore the available features."
     )
 
-    bot = Bot(
-        token=settings.BOT_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+
+async def help_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    await update.message.reply_text(
+        "👑 MYSTERIOUS GLOQBOT\n\n"
+        "Available commands:\n\n"
+        "/start — Start the bot\n"
+        "/help — Show help\n"
+        "/about — About GLOQBOT"
     )
 
-    storage = MemoryStorage()
-    dp = Dispatcher(storage=storage)
 
-    # Middlewares
-    dp.message.middleware(ForceJoinMiddleware())
-    dp.callback_query.middleware(ForceJoinMiddleware())
+async def about(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    await update.message.reply_text(
+        "👑 MYSTERIOUS GLOQBOT\n\n"
+        "⚡ Full Multi-Agent AI Operating System\n"
+        "🧠 AI Intelligence Layer\n"
+        "🤖 Agent Engine\n"
+        "📱 Telegram Native\n"
+        "🔐 Privacy & Security\n\n"
+        "Version: 1.0.0"
+    )
 
-    # Routers
-    root_router = setup_routers()
-    dp.include_router(root_router)
 
-    # Startup info
-    me = await bot.get_me()
-    logging.info(f"Starting {me.full_name} (@{me.username})")
-    logging.info(f"Owner: {settings.OWNER_NAME} (@{settings.OWNER_USERNAME}) ID: {settings.OWNER_ID}")
-    logging.info(f"Force Join: {settings.force_join_chats}")
+def main():
+    if not BOT_TOKEN:
+        raise ValueError(
+            "BOT_TOKEN is missing. Add it to your .env file."
+        )
 
-    try:
-        await dp.start_polling(bot)
-    finally:
-        await bot.session.close()
+    app = Application.builder().token(BOT_TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("about", about))
+
+    logger.info("MYSTERIOUS GLOQBOT is starting...")
+
+    app.run_polling()
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except (KeyboardInterrupt, SystemExit):
-        logging.info("Bot stopped")
+    main()
