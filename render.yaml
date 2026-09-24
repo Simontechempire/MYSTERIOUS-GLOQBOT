@@ -2,6 +2,7 @@ services:
   - type: worker
     name: mysterious-gloqbot
     runtime: python
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python main.py
     envVars:
@@ -9,9 +10,15 @@ services:
         sync: false
       - key: OWNER_ID
         sync: false
-      - key: BOT_NAME
-        value: MYSTERIOUS GLOQBOT
-      - key: BOT_VERSION
-        value: 1.0.0
-      - key: LOG_LEVEL
-        value: INFO
+      - key: OWNER_USERNAME
+        value: Queen_Tech_00
+      - key: OWNER_NAME
+        value: Queen tech
+      - key: FORCE_JOIN_CHANNEL
+        value: queentechchannel
+      - key: FORCE_JOIN_GROUP
+        value: queentechgroup
+      - key: FORCE_JOIN_SIMON
+        value: babyupdategc
+      - key: PYTHON_VERSION
+        value: 3.12.7
