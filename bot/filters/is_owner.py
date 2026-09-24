@@ -1,7 +1,7 @@
 from aiogram.filters import BaseFilter
 from aiogram.types import TelegramObject
 
-from config import OWNER_ID
+from config import settings
 
 
 class IsOwner(BaseFilter):
@@ -11,4 +11,4 @@ class IsOwner(BaseFilter):
         if not user:
             return False
 
-        return user.id == OWNER_ID
+        return user.id == settings.OWNER_ID
