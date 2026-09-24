@@ -1,2 +1,0 @@
-# MYSTERIOUS GLOQBOT
-# Agent Engine
