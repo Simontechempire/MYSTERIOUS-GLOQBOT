@@ -1,203 +1,57 @@
 import asyncio
 import logging
+import sys
 
-from telegram.ext import (
-    Application,
-    CallbackQueryHandler,
-    CommandHandler,
-)
+from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.fsm.storage.memory import MemoryStorage
 
-from config import BOT_TOKEN, LOG_LEVEL
+from config import settings
+from bot.handlers import setup_routers
+from bot.middlewares.force_join import ForceJoinMiddleware
 
-from bot.handlers.admin import admin_command
-
-from bot.handlers.features import (
-    agent_command,
-    ai_command,
-    business_command,
-    community_command,
-    creative_command,
-    research_command,
-    settings_command,
-)
-
-from bot.handlers.start import start_command
-
-from bot.handlers.user import (
-    about_command,
-    help_command,
-    status_command,
-)
+try:
+    import uvloop
+    uvloop.install()
+except ImportError:
+    pass
 
 
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=getattr(
-        logging,
-        LOG_LEVEL.upper(),
-        logging.INFO,
-    ),
-)
-
-logger = logging.getLogger(__name__)
-
-
-CALLBACK_TEXT = {
-    "ai_tools": (
-        "🧠 <b>AI Tools</b>\n\n"
-        "AI workflows, content ideas, research prompts, "
-        "and smart task planning."
-    ),
-
-    "agents": (
-        "🤖 <b>Agents</b>\n\n"
-        "Planner, executor, scheduler, and reusable "
-        "tool registry components."
-    ),
-
-    "creative": (
-        "🎨 <b>Creative</b>\n\n"
-        "Creative prompts, captions, scripts, "
-        "and multimedia concepts."
-    ),
-
-    "research": (
-        "🔬 <b>Research</b>\n\n"
-        "Research questions, structured plans, "
-        "analysis, and summaries."
-    ),
-
-    "community": (
-        "👥 <b>Community</b>\n\n"
-        "Welcome messages, announcements, rules, "
-        "and moderation support."
-    ),
-
-    "business": (
-        "💼 <b>Business</b>\n\n"
-        "Customer records, tasks, reports, "
-        "and operational workflows."
-    ),
-
-    "settings": (
-        "⚙️ <b>Settings</b>\n\n"
-        "Owner configuration, moderation controls, "
-        "and automation preferences."
-    ),
-
-    "about": (
-        "👑 <b>MYSTERIOUS GLOQBOT</b>\n\n"
-        "A Telegram power bot built for AI, "
-        "automation, communities, and business workflows."
-    ),
-}
-
-
-async def handle_callback(update, context):
-    query = update.callback_query
-
-    if query is None:
-        return
-
-    await query.answer()
-
-    await query.edit_message_text(
-        CALLBACK_TEXT.get(
-            query.data,
-            CALLBACK_TEXT["about"],
-        ),
-        parse_mode="HTML",
+async def main() -> None:
+    logging.basicConfig(
+        level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+        stream=sys.stdout,
     )
 
-
-def build_application() -> Application:
-
-    if not BOT_TOKEN or BOT_TOKEN.startswith("YOUR_"):
-        raise RuntimeError(
-            "BOT_TOKEN is missing or still a placeholder. "
-            "Set BOT_TOKEN in Render environment variables."
-        )
-
-    app = (
-        Application.builder()
-        .token(BOT_TOKEN)
-        .build()
+    bot = Bot(
+        token=settings.BOT_TOKEN,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
 
-    commands = {
-        "start": start_command,
-        "help": help_command,
-        "about": about_command,
-        "status": status_command,
-        "admin": admin_command,
-        "ai": ai_command,
-        "agents": agent_command,
-        "creative": creative_command,
-        "research": research_command,
-        "community": community_command,
-        "business": business_command,
-        "settings": settings_command,
-    }
+    storage = MemoryStorage()
+    dp = Dispatcher(storage=storage)
 
-    for name, callback in commands.items():
-        app.add_handler(
-            CommandHandler(
-                name,
-                callback,
-            )
-        )
+    dp.message.middleware(ForceJoinMiddleware())
+    dp.callback_query.middleware(ForceJoinMiddleware())
 
-    app.add_handler(
-        CallbackQueryHandler(
-            handle_callback
-        )
-    )
+    root_router = setup_routers()
+    dp.include_router(root_router)
 
-    return app
-
-
-async def main():
-
-    logger.info(
-        "👑 MYSTERIOUS GLOQBOT is starting..."
-    )
-
-    app = build_application()
-
-    await app.initialize()
-
-    await app.start()
-
-    if app.updater is None:
-        raise RuntimeError(
-            "Telegram updater is not available."
-        )
-
-    await app.updater.start_polling(
-        drop_pending_updates=True
-    )
-
-    logger.info(
-        "✅ MYSTERIOUS GLOQBOT is online."
-    )
+    me = await bot.get_me()
+    logging.info(f"Starting {me.full_name} (@{me.username})")
+    logging.info(f"Owner: {settings.OWNER_NAME} (@{settings.OWNER_USERNAME}) | ID: {settings.OWNER_ID}")
+    logging.info(f"Force Join: {settings.force_join_chats}")
 
     try:
-        await asyncio.Event().wait()
-
-    except (KeyboardInterrupt, SystemExit):
-        logger.info(
-            "🛑 MYSTERIOUS GLOQBOT is shutting down..."
-        )
-
+        await dp.start_polling(bot)
     finally:
-
-        if app.updater.running:
-            await app.updater.stop()
-
-        await app.stop()
-
-        await app.shutdown()
+        await bot.session.close()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logging.info("Bot stopped")
